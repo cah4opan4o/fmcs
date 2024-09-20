@@ -26,10 +26,8 @@ plt.xlabel('Время (с)')
 plt.ylabel('Амплитуда')
 plt.grid()
 plt.axis('tight')
-plt.show()
 
 # Визуализация спектра
-plt.figure()
 plt.subplot(2,1,2)
 plt.plot(frequencies[:N // 2], Y_magnitude[:N // 2]) 
 plt.title('Спектр сигнала')
