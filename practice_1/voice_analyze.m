@@ -1,8 +1,18 @@
 % 1. Считать аудиофайл
 [audioData, sampleRate] = audioread('MyVoice.wav');
 
+downsample_factor = 10;
+y1 = downsample(y, downsample_factor);
+zvuk = audioplayer(y1, Fs / downsample_factor); 
+play(zvuk);
+figure;  % Создаем новую фигуру
+plot(y1);
+xlabel('Отсчеты');  % Подпись оси X
+ylabel('Амплитуда'); % Подпись оси Y
+title('Прореженный сигнал');
+
 % 2. Прослушать аудиофайл
-sound(audioData, sampleRate);
+% sound(audioData, sampleRate);
 
 % 3. Показать информацию о размере аудиофайла
 disp(['Размер аудиофайла (всеми каналами): ', num2str(size(audioData))]);
@@ -27,3 +37,6 @@ xlim([0 sampleRate/2]); % Показываем только положитель
 xlabel('Частота (Гц)');
 ylabel('Амплитуда');
 title('Спектр аудиозаписи');
+
+output_filename = 'MyVoice_downsampled.wav';
+audiowrite(output_filename, y1, Fs / downsample_factor);
