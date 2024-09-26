@@ -15,7 +15,7 @@ SINR_UL = 4  # требуемое SINR для UL в дБ
 SINR_DL = 2  # требуемое SINR для DL в дБ
 Nf_BS = 2.4  # коэффициент шума приемника BS в дБ
 Nf_UE = 6    # коэффициент шума приемника UE в дБ
-B = 290  # температура системы в К
+T = 290  # температура системы в К
 h_BS = 30  # высота антенны базовой станции (в м)
 h_UE = 1.5  # высота антенны пользователя (в м)
 C_m = 3  # поправка для городской среды
@@ -25,8 +25,8 @@ k = 1.38e-23  # постоянная Больцмана
 
 # Функция для расчета уровня шума (в дБ)
 def calculate_noise(Bandwidth, Nf):
-    # Уровень шума: 10 * log10(k * T * B) + F
-    Noise_power = 10 * np.log10(k * B * Bandwidth) + Nf
+    # Уровень шума: 10 * log10(k * T * Bw) + F
+    Noise_power = 10 * np.log10(k * T * Bandwidth) + Nf
     return Noise_power
 
 # Запас мощности сигнала
@@ -40,6 +40,14 @@ MAPL_UL = P_tx_UE + G_rx_BS - (Noise_UL + SINR_UL + L_margin)
 Noise_DL = calculate_noise(frequency_DL, Nf_UE)
 MAPL_DL = P_tx_BS + G_tx_BS - (Noise_DL + SINR_DL + L_margin)
 
+print(f"Максимально допустимые потери сигнала для UL (MAPL_UL): {MAPL_UL:.2f} дБ")
+print(f"Максимально допустимые потери сигнала для DL (MAPL_DL): {MAPL_DL:.2f} дБ")
+
+# Функция для модели UMiNLOS
+def uminlos(f, d):
+    L = 32.4 + 20 * np.log10(d) + 20 * np.log10(f)
+    return L
+
 # Функция для модели COST 231 Hata
 def cost231_hata(f, d, h_BS, h_UE, C_m):
     a_h_UE = (1.1 * np.log10(f) - 0.7) * h_UE - (1.56 * np.log10(f) - 0.8)
@@ -47,25 +55,29 @@ def cost231_hata(f, d, h_BS, h_UE, C_m):
         (44.9 - 6.55 * np.log10(h_BS)) * np.log10(d) + C_m
     return L
 
-# Функция для модели UMiNLOS
-def uminlos(f, d):
-    L = 32.4 + 20 * np.log10(d) + 20 * np.log10(f)
+def walfish_ikegami():
+    
     return L
 
-# 3. Зависимость потерь от расстояния для обеих моделей
+# 3. Зависимость потерь от расстояния для трёх моделей
 distances = np.linspace(0.1, 10, 100)  # расстояние от 0.1 км до 10 км
 frequency_MHz = 1800  # частота в МГц
-
-# Потери для модели COST 231 Hata
-loss_cost231 = cost231_hata(frequency_MHz, distances, h_BS, h_UE, C_m)
 
 # Потери для модели UMiNLOS
 loss_uminlos = uminlos(frequency_MHz/1000, distances)  # переводим частоту в ГГц
 
+# Потери для модели COST 231 Hata
+loss_cost231 = cost231_hata(frequency_MHz, distances, h_BS, h_UE, C_m)
+
+# Потери для модели Walfish_ikegami
+loss_walfish = walfish_ikegami()
+
+
 # Построение графика зависимости потерь от расстояния
 plt.figure(figsize=(10, 6))
+plt.plot(distances, loss_uminlos, label="UMiNLOS")
 plt.plot(distances, loss_cost231, label="COST 231 Hata")
-plt.plot(distances, loss_uminlos, label="UMiNLOS", linestyle="--")
+plt.plot(distances, loss_walfish, label="Walfish_ikegami")
 plt.xlabel("Расстояние (км)")
 plt.ylabel("Потери (дБ)")
 plt.title("Зависимость потерь сигнала от расстояния")
