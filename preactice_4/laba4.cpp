@@ -64,16 +64,6 @@ void print_autocorrelation_table(const vector<int>& sequence) {
     }
 }
 
-// Вычисление взаимной корреляции между двумя последовательностями
-double cross_correlation(const vector<int>& seq1, const vector<int>& seq2) {
-    int n = seq1.size();
-    double correlation = 0;
-    for (int i = 0; i < n; i++) {
-        correlation += (seq1[i] == seq2[i]) ? 1 : -1;
-    }
-    return correlation / n;
-}
-
 int main() {
     int length_sequence_gold = 7;
     vector<int> x = {0, 0, 1, 0, 0}; // x = 4 в 2СС
@@ -99,7 +89,7 @@ int main() {
     }
     cout << endl;
 
-    double cross_corr = cross_correlation(gold_sequence_1, gold_sequence_2);
+    double cross_corr = autocorrelation(gold_sequence_1, gold_sequence_2);
     cout << "Взаимная корреляция между двумя последовательностями Голда: " << cross_corr << endl;
 
     return 0;
