@@ -7,7 +7,7 @@ using namespace std;
 
 vector<int> generate_packet(int packet_length){
     vector<int> N_sequence;
-    for (int i = 0; i < packet_length - 1; i++){
+    for (int i = 0; i < packet_length; i++){
         N_sequence.push_back(rand() % 2);
     }
     return N_sequence;
@@ -56,15 +56,6 @@ int main(){
     int variant = 24; // 20 + номер в журнале (4)
     vector<int> g_sequence = {1,1,1,1,0,1,1,1};
     vector<int> packet = generate_packet(variant);
-
-    // packet = {0,1,0,0,1,0,0};
-    // g_sequence = {1,1,0,1};
-
-    // чистим от ведущих нулей
-    while (!packet.empty() && packet[0] == 0) {
-        packet.erase(packet.begin());
-    }
-
     vector<int> crc = calculateCRC(packet, g_sequence);
 
     cout << "CRC: ";
@@ -88,7 +79,7 @@ int main(){
     }
 
     // Проверка с длиной пакета 250 бит
-    variant = 250 + crc.size();
+    variant = 250;
     packet = generate_packet(variant);
     crc = calculateCRC(packet, g_sequence);
     packetWithCRC = appendCRC(packet, crc);
@@ -104,7 +95,7 @@ int main(){
     int errorsNotDetected = 0;
     int totalLength = packetWithCRC.size();
 
-    for (int i = 0; i < totalLength; ++i) {
+    for (int i = 0; i < packet.size(); ++i) {
         // Искажение бита
         packetWithCRC[i] ^= 1; // Инвертируем i-ый бит
 
@@ -114,9 +105,6 @@ int main(){
         } else {
             errorsDetected++;
         }
-
-        // Восстановление бита
-        packetWithCRC[i] ^= 1; // Возвращаем i-ый бит обратно
     }
 
     cout << "Количество обнаруженных ошибок: " << errorsDetected << endl;
