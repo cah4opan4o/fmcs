@@ -5,42 +5,58 @@
 
 using namespace std;
 
-// Для вычисления CRC
-// Пораждающий полином из 5 лабы: 11110111
+// Функция кодера: Преобразует строку в вектор битов
+vector<int> encodeToBits(const string& input) {
+    vector<int> packet;
+    for (char c : input) {
+        bitset<8> bits(static_cast<unsigned char>(c)); // Преобразование символа в биты
+        for (int i = 7; i >= 0; --i) {
+            packet.push_back(bits[i]);
+        }
+    }
+    return packet;
+}
 
-// gold из 4 лабы: 
+// Функция декодера: Преобразует вектор битов обратно в строку
+string decodeFromBits(const vector<int>& packet) {
+    string result;
+    if (packet.size() % 8 != 0) {
+        throw invalid_argument("Размер вектора битов некорректен (не кратен 8).");
+    }
+
+    for (size_t i = 0; i < packet.size(); i += 8) {
+        bitset<8> bits;
+        for (int j = 0; j < 8; ++j) {
+            bits[7 - j] = packet[i + j]; // Заполняем биты с младшего к старшему
+        }
+        result += static_cast<char>(bits.to_ulong());
+    }
+    return result;
+}
 
 int main() {
-    // Ввод фамилии и имени
     string surname, name;
     cout << "Введите фамилию: ";
     cin >> surname;
     cout << "Введите имя: ";
     cin >> name;
 
-    // Объединение фамилии и имени для обработки
-    string fullName = surname + name; // Если добавить + " " + то будут биты пробела, а это не нужно
+    string fullName = surname + " " + name; // Закодируем ещё и пробел
 
-    // Строка для хранения битового представления
-    vector<int> packet;
+    vector<int> packet = encodeToBits(fullName);
 
-    // Преобразование каждого символа в ASCII-код и затем в биты
-    for (char c : fullName) {
-        bitset<8> bits(static_cast<unsigned char>(c)); // Преобразование символа в биты
-        for (int i = 7; i >= 0; --i) {
-            packet.push_back(bits[i]);
-        }
-    }
-
-    // Вывод битового представления
     cout << "Битовое представление фамилии и имени: " << endl;
     for (size_t i = 0; i < packet.size(); ++i) {
         cout << packet[i];
         if ((i + 1) % 8 == 0) {
-            std::cout << " "; // Добавляем пробел после каждых 8 битов
+            cout << " ";
         }
     }
     cout << endl;
+
+    // Декодирование обратно в строку
+    string decodedString = decodeFromBits(packet);
+    cout << "Восстановленная строка: " << decodedString << endl;
 
     return 0;
 }
