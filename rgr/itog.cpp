@@ -4,16 +4,9 @@
 #include <string>
 #include <cmath>
 #include <utility>
+#include <random>
 
 using namespace std;
-
-// vector<int> generate_BitArray(int array_length){
-//     vector<int> array_sequence;
-//     for (int i = 0; i < array_length; i++){
-//         array_sequence.push_back(rand() % 2);
-//     }
-//     return array_sequence;
-// }
 
 // Функция для выполнения сдвига и возвращения сдвинутого бита
 pair<vector<int>, int> shift_sequence(vector<int>& x, int element_1, int element_2) {
@@ -170,12 +163,38 @@ vector<int> repeat_elements(const vector<int>& input_vector, int N) {
     return output_vector;
 }
 
-// vector<int> insert_array_at_position(vector<int>& target_vector, const vector<int>& array_to_insert, int position) {
-//     vector<int> output;
-//     // Вставляем элементы из array_to_insert в target_vector начиная с указанной позиции
-//     output = target_vector.insert(target_vector.begin() + position, array_to_insert.begin(), array_to_insert.end());
-//     return output;
-// }
+// Вставляем на position в массиве весь массив данных
+vector<int> insert_array_at_position(vector<int>& target_vector, const vector<int>& array_to_insert, int position) {
+    // Проверяем, что позиция корректна
+    if (position < 0 || position > target_vector.size()) {
+        cout << "Invalid position!" << endl;
+        return target_vector;
+    }
+
+    // Вставляем элементы из array_to_insert в target_vector начиная с указанной позиции
+    target_vector.insert(target_vector.begin() + position, array_to_insert.begin(), array_to_insert.end());
+
+    return target_vector;
+}
+
+// нормальное распределение для шума
+vector<double> generate_noise(int size, float mu, float sigma) {
+    
+    // Вектор для хранения шума
+    vector<double> noise(size);
+    
+    // Генератор случайных чисел с нормальным распределением
+    random_device rd;  // Получаем случайное число от устройства
+    mt19937 gen(rd()); // Инициализируем генератор
+    normal_distribution<double> dist(mu, sigma); // Нормальное распределение с mu и sigma
+
+    // Заполняем вектор шумом
+    for (int i = 0; i < size; ++i) {
+        noise[i] = dist(gen); // Генерируем случайное число и добавляем в вектор
+    }
+
+    return noise;
+}
 
 int main(){
     // Ввод фамилии и имени
@@ -211,21 +230,14 @@ int main(){
     vector<int> g_sequence = {1,1,1,1,0,1,1,1};
     vector<int> crc = calculateCRC(packet, g_sequence);
 
-    cout << "CRC: ";
-    for (int bit : crc) cout << bit;
-    cout << endl;
-
     vector<int> packetWithCRC = appendCRC(packet, crc);
-    cout << "Пакет с добавленным CRC: ";
-    for (int bit : packetWithCRC) cout << bit;
-    cout << endl;
 
     // Проверка на приемной стороне
-    // if (checkPacket(packetWithCRC, g_sequence)) {
-    //     cout << "Ошибок не обнаружено в принятом пакете." << endl;
-    // } else {
-    //     cout << "Ошибка обнаружена в принятом пакете." << endl;
-    // }
+    if (checkPacket(packetWithCRC, g_sequence)) {
+        cout << "Ошибок не обнаружено в принятом пакете." << endl;
+    } else {
+        cout << "Ошибка обнаружена в принятом пакете." << endl;
+    }
 
     // генерация последовательности Голда
     int length_sequence_gold = 31;
@@ -266,12 +278,19 @@ int main(){
         }
         cout << "Значение вне диапазона" << endl;
     }
-    // array_out = insert_array_at_position(array_data, array_out, position);
-    // cout << "p9itb: ";
-    // for(int i : array_out){
-    //     cout << i;
-    // }
-    // cout << endl;
 
+    array_out = insert_array_at_position(array_out, array_data, position);
+
+    float mu = 0.0;
+    float sigma = 0;
+    cin >> sigma;
+
+    vector<double> array_with_hastle = generate_noise(2 * N * (L + M + G),mu,sigma);
+
+    cout << "noise: ";
+    for (int bit : array_with_hastle) {
+        cout << bit;
+    }
+    cout << endl;
 
 }
