@@ -45,9 +45,9 @@ vector<int> cyclic_shift(const vector<int>& seq, int shift) {
     return shifted_seq;
 }
 
-double calculateCorrelation(const vector<int>& x, const vector<int>& y) {
+double calculateCorrelation(const vector<double>& x, const vector<double>& y) {
     if (x.size() != y.size() || x.size() == 0) {
-        throw invalid_argument("Arrays must be of the same size and non-empty.");
+        throw invalid_argument("Векторы имеют разную длину или пустые!");
     }
     
     double meanX = 0.0, meanY = 0.0;
@@ -153,7 +153,20 @@ vector<int> append_gold_sequnce(const vector<int>& packetWithCRC, const vector<i
 vector<int> repeat_elements(const vector<int>& input_vector, int N) {
     vector<int> output_vector;
     output_vector.reserve(input_vector.size() * N); // Резервируем память для выходного вектора
+    
+    for (int element : input_vector) {
+        for (int i = 0; i < N; ++i) {
+            output_vector.push_back(element); // Добавляем элемент N раз
+        }
+    }
 
+    return output_vector;
+}
+
+vector<double> repeat_elements_double(const vector<double>& input_vector, int N) {
+    vector<double> output_vector;
+    output_vector.reserve(input_vector.size() * N); // Резервируем память для выходного вектора
+    
     for (int element : input_vector) {
         for (int i = 0; i < N; ++i) {
             output_vector.push_back(element); // Добавляем элемент N раз
@@ -165,35 +178,140 @@ vector<int> repeat_elements(const vector<int>& input_vector, int N) {
 
 // Вставляем на position в массиве весь массив данных
 vector<int> insert_array_at_position(vector<int>& target_vector, const vector<int>& array_to_insert, int position) {
-    // Проверяем, что позиция корректна
-    if (position < 0 || position > target_vector.size()) {
+     // Проверяем, что позиция корректна
+    if (position < 0 || position >= target_vector.size()) {
         cout << "Invalid position!" << endl;
         return target_vector;
     }
 
-    // Вставляем элементы из array_to_insert в target_vector начиная с указанной позиции
-    target_vector.insert(target_vector.begin() + position, array_to_insert.begin(), array_to_insert.end());
+    // Проверяем, что длина вставляемого массива не превышает доступного места в target_vector
+    if (position + array_to_insert.size() > target_vector.size()) {
+        cout << "Not enough space in target vector to insert the array!" << endl;
+        return target_vector;
+    }
+
+    // Заменяем элементы target_vector начиная с позиции position
+    for (size_t i = 0; i < array_to_insert.size(); ++i) {
+        target_vector[position + i] = array_to_insert[i];
+    }
 
     return target_vector;
 }
 
-// нормальное распределение для шума
-vector<double> generate_noise(int size, float mu, float sigma) {
-    
-    // Вектор для хранения шума
-    vector<double> noise(size);
-    
-    // Генератор случайных чисел с нормальным распределением
-    random_device rd;  // Получаем случайное число от устройства
-    mt19937 gen(rd()); // Инициализируем генератор
-    normal_distribution<double> dist(mu, sigma); // Нормальное распределение с mu и sigma
+// Функция для генерации шума с нормальным распределением
+void generate_noise(vector<double>& noise, int size, double mu, double sigma) {
+    // Создаём генератор случайных чисел
+    random_device rd;
+    mt19937 gen(rd());  // Генератор случайных чисел
 
-    // Заполняем вектор шумом
+    // Создаём нормальное распределение с параметрами mu (среднее) и sigma (стандартное отклонение)
+    normal_distribution<> dist(mu, sigma);
+
+    // Заполняем вектор случайными значениями из нормального распределения
     for (int i = 0; i < size; ++i) {
-        noise[i] = dist(gen); // Генерируем случайное число и добавляем в вектор
+        noise[i] = dist(gen);  // Генерируем случайное число и присваиваем его вектору
+    }
+}
+
+vector<double> convert_int_to_double(const vector<int>& int_vector) {
+    vector<double> double_vector;
+
+    // Преобразование каждого элемента
+    for (int value : int_vector) {
+        double_vector.push_back(static_cast<double>(value)); // Приведение int к double
     }
 
-    return noise;
+    return double_vector;
+}
+
+vector<double> add_vectors(const vector<double>& vec1, const vector<double>& vec2) {
+    // Проверяем, что размеры векторов совпадают
+    if (vec1.size() != vec2.size()) {
+        throw runtime_error("Размерность массивов не равны!");
+    }
+
+    vector<double> result(vec1.size());
+    for (size_t i = 0; i < vec1.size(); ++i) {
+        result[i] = vec1[i] + vec2[i];
+    }
+
+    return result;
+}
+
+int findSyncSequenceStart(const vector<double>& array_with_hastle, 
+                          const vector<double>& gold_sequence_double, 
+                          int N, int L, int M, int G) {
+    double result = 0;
+    int G_N = G * N; // Длина синхронизирующей последовательности
+
+    // Проверяем, чтобы длина данных была достаточной
+    if (array_with_hastle.size() < G_N) {
+        cout << "Длина массива слишком мала для поиска синхронизирующей последовательности." << endl;
+        return -1;
+    }
+
+    // Проходим по массиву и ищем синхронизирующую последовательность
+    for (int i = 0; i <= N*(L+M+G); ++i) {
+        // Извлекаем подмассив длиной G * N начиная с позиции i
+        vector<double> synchro_sequence(array_with_hastle.begin() + i, 
+                                        array_with_hastle.begin() + i + G_N);
+        // Вычисляем корреляцию
+        result = calculateCorrelation(synchro_sequence, gold_sequence_double);
+        cout << "correlation = " << result << endl;
+        // Проверяем корреляцию
+        if (abs(result) >= 0.6) {
+            cout << "Найден вход в синхроимпульс на индексе: " << i << endl;
+            return i; // Возвращаем индекс начала
+        }
+    }
+
+    cout << "Синхроимпульс не найден." << endl;
+    return -1; // Возвращаем -1, если синхроимпульс не найден
+}
+
+vector<double> decode_signal(const vector<double>& signal, int N) {
+    double P = 0.6;
+
+    // Результирующий вектор для хранения декодированных битов
+    vector<double> decoded_bits;
+
+    // Длина сигнала
+    size_t signal_length = signal.size();
+
+    // Обработка сигналов группами длиной N
+    for (size_t i = 0; i + N <= signal_length; i += N) {
+        // Суммируем N отсчетов
+        double sum = 0.0;
+        for (size_t j = 0; j < N; ++j) {
+            sum += signal[i + j];
+        }
+
+        // Среднее значение текущей группы
+        double average = sum / N;
+
+        cout << average << endl;
+
+        // Принимаем решение: 0 или 1
+        if (average >= P) {
+            decoded_bits.push_back(1); // Если среднее выше порога, это 1
+        } else {
+            decoded_bits.push_back(0); // Иначе 0
+        }
+    }
+
+    // Возвращаем массив декодированных битов
+    return decoded_bits;
+}
+
+vector<int> convertVectorToInt(const vector<double>& input) {
+    vector<int> result;
+    result.reserve(input.size()); // Резервируем память для оптимизации
+
+    for (double value : input) {
+        result.push_back(static_cast<int>(round(value))); // Округление
+    }
+
+    return result;
 }
 
 int main(){
@@ -232,12 +350,18 @@ int main(){
 
     vector<int> packetWithCRC = appendCRC(packet, crc);
 
-    // Проверка на приемной стороне
-    if (checkPacket(packetWithCRC, g_sequence)) {
-        cout << "Ошибок не обнаружено в принятом пакете." << endl;
-    } else {
-        cout << "Ошибка обнаружена в принятом пакете." << endl;
+    cout << "CRC: "<<endl;
+    for (double bit : packetWithCRC) {
+        cout << bit;
     }
+    cout << endl;
+
+    // Проверка на приемной стороне
+    // if (checkPacket(packetWithCRC, g_sequence)) {
+    //     cout << "Ошибок не обнаружено в принятом пакете." << endl;
+    // } else {
+    //     cout << "Ошибка обнаружена в принятом пакете." << endl;
+    // }
 
     // генерация последовательности Голда
     int length_sequence_gold = 31;
@@ -246,7 +370,7 @@ int main(){
 
     vector<int> gold_sequence = generate_sequence_gold(x, y, length_sequence_gold);
 
-    cout << "Первая последовательность Голда: ";
+    // cout << "Последовательность Голда: ";
     for (int bit : gold_sequence) {
         cout << bit;
     }
@@ -264,7 +388,17 @@ int main(){
     int N = 4;
     vector<int> array_data(N * (L + M + G),0);
     array_data = append_gold_sequnce(packetWithCRC,gold_sequence);
+    // cout << "gold + packet + CRC: : ";
+    for (double bit : array_data) {
+        cout << bit;
+    }
+    cout << endl;
     array_data = repeat_elements(array_data, N);
+    // cout << "gold + N * (packet + CRC):";
+    // for (double bit : array_data) {
+    //     cout << bit;
+    // }
+    // cout << endl;
     vector<int> array_out(2 * N * (L + M + G), 0);
 
     int position = 0;
@@ -285,12 +419,85 @@ int main(){
     float sigma = 0;
     cin >> sigma;
 
-    vector<double> array_with_hastle = generate_noise(2 * N * (L + M + G),mu,sigma);
+    vector<double> array_with_hastle(2 * N  * (L + M + G));
+    generate_noise(array_with_hastle,array_with_hastle.size(),mu,sigma);
 
-    cout << "noise: ";
-    for (int bit : array_with_hastle) {
-        cout << bit;
+    // cout << "noise: ";
+    // for (double bit : array_with_hastle) {
+    //     cout << bit;
+    // }
+
+    vector<double> array_out_double = convert_int_to_double(array_out);
+
+    vector<double> signal_out = add_vectors(array_out_double,array_with_hastle);
+
+    // cout << "signal with hastle: ";
+    // for (double bit : signal_out) {
+    //     cout << bit << " ";
+    // }
+    // cout << endl;
+
+    vector<double> gold_sequence_double = convert_int_to_double(gold_sequence);
+
+    // cout << "gold: : ";
+    // for (double bit : gold_sequence_double) {
+    //     cout << bit;
+    // }
+    // cout << endl;
+
+    gold_sequence_double = repeat_elements_double(gold_sequence_double, N);
+
+    int sync_index = findSyncSequenceStart(signal_out,gold_sequence_double,N,L,M,G);
+
+    signal_out.erase(signal_out.begin(), signal_out.begin() + sync_index + 1);
+
+    vector<double> signal_after_decoding = decode_signal(signal_out,N);
+
+    // cout << "signal start:"<<endl;
+    // for (double bit : signal_after_decoding) {
+    //     cout << bit;
+    // }
+    // cout << endl;
+
+    // cout << "gold:"<<endl;
+    // for (double bit : gold_sequence) {
+    //     cout << bit;
+    // }
+    // cout << endl;
+
+
+    signal_after_decoding.erase(signal_after_decoding.begin(), signal_after_decoding.begin() + G);
+
+    // cout << "signal without GOLD:"<<endl;
+    // for (double bit : signal_after_decoding) {
+    //     cout << bit;
+    // }
+    // cout << endl;
+
+    signal_after_decoding.erase(signal_after_decoding.begin() + G + L + M + 1, signal_after_decoding.end()); // ПРОБЛЕМА В ОБРЕЗКЕ ВЕКТОРА и в декодирование битов
+ 
+    // cout << "signal without hastle after CRC:"<<endl;
+    // for (double bit : signal_after_decoding) {
+    //     cout << bit;
+    // }
+    // cout << endl;
+
+    // cout << "packet with CRC:"<<endl;
+    // for (double bit : packetWithCRC) {
+    //     cout << bit;
+    // }
+    // cout << endl;
+
+    vector<int> signal_after_decoding_int = convertVectorToInt(signal_after_decoding);
+
+    // Проверка на приемной стороне
+    if (checkPacket(signal_after_decoding_int, g_sequence)) {
+        cout << "net problem Ошибок не обнаружено в принятом пакете." << endl;
+    } else {
+        cout << "problem Ошибка обнаружена в принятом пакете." << endl;
     }
-    cout << endl;
 
+    
+
+    // зависимость корреляции от шума
 }
