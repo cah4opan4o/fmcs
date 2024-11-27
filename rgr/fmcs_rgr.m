@@ -163,12 +163,12 @@ function main
     %disp(bits_sequence);
     %disp(array_data);
 
-    bits_sequence_W_N = bits_sequence(1 :L + M + G);
+    bits_sequence_W_N = bits_sequence(1 : end);
     figure;
     plot(bits_sequence_W_N, 'LineWidth', 2);
     xlabel('Time', 'FontSize', 12, 'FontWeight', 'bold');
     ylabel('Signal', 'FontSize', 12, 'FontWeight', 'bold');
-    title('Обрезал до синхры и без конечного шума', 'FontSize', 14, 'FontWeight', 'bold');
+    title('Обрезал до Голда', 'FontSize', 14, 'FontWeight', 'bold');
     grid on;
     set(gca, 'FontSize', 12, 'FontWeight', 'bold');
     xlim([0 length(bits_sequence_W_N)]); 
@@ -187,14 +187,27 @@ function main
     ylim([min(bits_sequence_W_NG) - 0.5, max(bits_sequence_W_NG) + 0.5]);
 
     % Проверка на приемной стороне
-    if checkPacket(bits_sequence_W_NG, g_sequence)
+    [isValid, crcLength, endIndex] = checkPacket(packetWithCRC, g_sequence);
+    disp(crcLength);
+    disp(endIndex);
+    if isValid
         disp('Ошибок не обнаружено в принятом пакете.');
     else
         disp('Ошибка обнаружена в принятом пакете.');
     end
     
-    bits_sequence_W_NGM = bits_sequence_W_NG(1 : L);
+    bits_sequence_W_NGM = bits_sequence_W_NG(1 : crcLength);
     
+    figure;
+    plot(bits_sequence_W_NGM, 'LineWidth', 2);
+    xlabel('Time', 'FontSize', 12, 'FontWeight', 'bold');
+    ylabel('Signal', 'FontSize', 12, 'FontWeight', 'bold');
+    title('Обрезал CRC + шум', 'FontSize', 14, 'FontWeight', 'bold');
+    grid on;
+    set(gca, 'FontSize', 12, 'FontWeight', 'bold');
+    xlim([0 length(bits_sequence_W_NGM)]); 
+    ylim([min(bits_sequence_W_NGM) - 0.5, max(bits_sequence_W_NGM) + 0.5]);
+
     slovo = decodeFromBits(bits_sequence_W_NGM);
     disp(slovo);
 end
@@ -236,20 +249,42 @@ function dispBits(bits)
     fprintf('\n');
 end
 
-function crc = calculateCRC(packet, generator)
+function [crc, crcLength, endIndex] = calculateCRC(packet, generator)
+    % Дополнение пакета нулями
     temp = [packet, zeros(1, length(generator) - 1)];
+    crcLength = 0; % Счётчик длины CRC
+    endIndex = -1; % Индекс завершения CRC
+    generatorLength = length(generator);
+
     for i = 1:length(packet)
         if temp(i) == 1
-            temp(i:i + length(generator) - 1) = xor(temp(i:i + length(generator) - 1), generator);
+            % Выполняем XOR с полиномом генератора
+            temp(i:i + generatorLength - 1) = xor(temp(i:i + generatorLength - 1), generator);
+        end
+        
+        % Увеличиваем счётчик длины CRC
+        crcLength = crcLength + 1;
+
+        % Проверяем, заполнен ли текущий отрезок нулями
+        if all(temp(i+1:end) == 0)
+            endIndex = i + generatorLength - 1; % Запоминаем индекс завершения CRC
+            break;
         end
     end
-    crc = temp(end - (length(generator) - 2):end);
+
+    % Извлекаем CRC
+    crc = temp(end - (generatorLength - 2):end);
 end
 
-function isValid = checkPacket(packetWithCRC, generator)
-    remainder = calculateCRC(packetWithCRC, generator);
+
+function [isValid, crcLength, endIndex] = checkPacket(packetWithCRC, generator)
+    % Вычисляем остаток и информацию о CRC
+    [remainder, crcLength, endIndex] = calculateCRC(packetWithCRC, generator);
+    
+    % Проверяем, что остаток равен нулю
     isValid = all(remainder == 0);
 end
+
 
 function gold_sequence = generate_sequence_gold(x, y, length_sequence)
     gold_sequence = zeros(1, length_sequence);
@@ -316,7 +351,7 @@ function [syncStartIndex, correlations] = findSyncSequenceStart(array_with_hastl
         
         % Проверяем, если корреляция близка к 1 (синхроимпульс найден)
         % Захлопнуть начало синхры
-        if abs(result) >= 0.74 % что-то поделать с SINR 
+        if abs(result) >= 0.76 % что-то поделать с SINR 
             disp(['Найден вход в синхроимпульс на индексе: ', num2str(i)]);
             syncStartIndex = i; % Возвращаем индекс начала синхроимпульса
             break;
