@@ -48,11 +48,20 @@ function main
     L = length(packet);
     M = length(crc);
     G = length(gold_sequence);
-    N = 5; % Sample rate
+    N = 6; % Sample rate
+    N1 = N / 2;
+    N2 = N * 2;
     array_data = repmat([gold_sequence, packetWithCRC], 1);
-
-    array_out = zeros(1, 2 * N * (L + M + G));
+    array_data_1 = repmat([gold_sequence, packetWithCRC], 1);
+    array_data_2 = repmat([gold_sequence, packetWithCRC], 1);
     
+    % стандартный sample rate
+    array_out = zeros(1, 2 * N * (L + M + G));
+    % уменьшин sample rate в 2 раза
+    array_out_1 = zeros(1, 2 * N1 * (L + M + G));
+    % увеличен sample rate в 2 раза
+    array_out_2 = zeros(1, 2 * N2 * (L + M + G));
+
     figure;
     plot(array_data, 'LineWidth', 2);
     xlabel('Time', 'FontSize', 12, 'FontWeight', 'bold');
@@ -64,7 +73,13 @@ function main
     ylim([min(array_data) - 0.5, max(array_data) + 0.5]);
 
     array_data = repeat_elements(array_data,N);
+    array_data_1 = repeat_elements(array_data_1,N1);
+    array_data_2 = repeat_elements(array_data_2,N2);
+
     figure;
+
+    % Первый график
+    subplot(3, 1, 1); % 3 строки, 1 столбец, 1-я позиция
     plot(array_data, 'LineWidth', 2);
     xlabel('Time', 'FontSize', 12, 'FontWeight', 'bold');
     ylabel('Signal', 'FontSize', 12, 'FontWeight', 'bold');
@@ -73,6 +88,28 @@ function main
     set(gca, 'FontSize', 12, 'FontWeight', 'bold');
     xlim([0 length(array_data)]); 
     ylim([min(array_data) - 0.5, max(array_data) + 0.5]);
+    
+    % Второй график
+    subplot(3, 1, 2); % 3 строки, 1 столбец, 2-я позиция
+    plot(array_data_1, 'LineWidth', 2);
+    xlabel('Time', 'FontSize', 12, 'FontWeight', 'bold');
+    ylabel('Signal', 'FontSize', 12, 'FontWeight', 'bold');
+    title('Signal Visualization (Sample rate / 2) * (GOLD + DATA + CRC)', 'FontSize', 14, 'FontWeight', 'bold');
+    grid on;
+    set(gca, 'FontSize', 12, 'FontWeight', 'bold');
+    xlim([0 length(array_data_1)]); 
+    ylim([min(array_data_1) - 0.5, max(array_data_1) + 0.5]);
+    
+    % Третий график
+    subplot(3, 1, 3); % 3 строки, 1 столбец, 3-я позиция
+    plot(array_data_2, 'LineWidth', 2);
+    xlabel('Time', 'FontSize', 12, 'FontWeight', 'bold');
+    ylabel('Signal', 'FontSize', 12, 'FontWeight', 'bold');
+    title('Signal Visualization (Sample rate * 2) * (GOLD + DATA + CRC)', 'FontSize', 14, 'FontWeight', 'bold');
+    grid on;
+    set(gca, 'FontSize', 12, 'FontWeight', 'bold');
+    xlim([0 length(array_data_2)]); 
+    ylim([min(array_data_2) - 0.5, max(array_data_2) + 0.5]);
 
     % Ввод позиции
     flag = true;
@@ -88,35 +125,92 @@ function main
     
     % Вставка данных
     array_out = insert_array_at_position(array_out, array_data, position);
+    array_out_1 = insert_array_at_position(array_out_1, array_data_1, position);
+    array_out_2 = insert_array_at_position(array_out_2, array_data_2, position);
 
     figure;
+    % Первый график
+    subplot(3, 1, 1); % 3 строки, 1 столбец, 1-я позиция
     plot(array_out, 'LineWidth', 2);
     xlabel('Time', 'FontSize', 12, 'FontWeight', 'bold');
     ylabel('Signal', 'FontSize', 12, 'FontWeight', 'bold');
-    title('Signal Visualization GOLD + DATA + CRC', 'FontSize', 14, 'FontWeight', 'bold');
+    title('Signal Visualization Sample rate * (GOLD + DATA + CRC)', 'FontSize', 14, 'FontWeight', 'bold');
     grid on;
     set(gca, 'FontSize', 12, 'FontWeight', 'bold');
     xlim([0 length(array_out)]); 
     ylim([min(array_out) - 0.5, max(array_out) + 0.5]);
+    
+    % Второй график
+    subplot(3, 1, 2); % 3 строки, 1 столбец, 2-я позиция
+    plot(array_out_1, 'LineWidth', 2);
+    xlabel('Time', 'FontSize', 12, 'FontWeight', 'bold');
+    ylabel('Signal', 'FontSize', 12, 'FontWeight', 'bold');
+    title('Signal Visualization (Sample rate / 2) * (GOLD + DATA + CRC)', 'FontSize', 14, 'FontWeight', 'bold');
+    grid on;
+    set(gca, 'FontSize', 12, 'FontWeight', 'bold');
+    xlim([0 length(array_out_1)]); 
+    ylim([min(array_out_1) - 0.5, max(array_out_1) + 0.5]);
+    
+    % Третий график
+    subplot(3, 1, 3); % 3 строки, 1 столбец, 3-я позиция
+    plot(array_out_2, 'LineWidth', 2);
+    xlabel('Time', 'FontSize', 12, 'FontWeight', 'bold');
+    ylabel('Signal', 'FontSize', 12, 'FontWeight', 'bold');
+    title('Signal Visualization (Sample rate * 2) * (GOLD + DATA + CRC)', 'FontSize', 14, 'FontWeight', 'bold');
+    grid on;
+    set(gca, 'FontSize', 12, 'FontWeight', 'bold');
+    xlim([0 length(array_out_2)]); 
+    ylim([min(array_out_2) - 0.5, max(array_out_2) + 0.5]);
 
     % Генерация шума
     sigma = input('Введите стандартное отклонение шума: ');
     array_with_hastle = generate_noise(2 * N * (L + M + G), 0, sigma);
+    array_with_hastle_1 = generate_noise(2 * N1 * (L + M + G), 0, sigma);
+    array_with_hastle_2 = generate_noise(2 * N2 * (L + M + G), 0, sigma);
     %disp('Шум:');
 
     array_out = double(array_out);
+    array_out_1 = double(array_out_1);
+    array_out_2 = double(array_out_2);
+
     result = array_out + array_with_hastle;
+    result_1 = array_out_1 + array_with_hastle_1;
+    result_2 = array_out_2 + array_with_hastle_2;
 
     %disp(result);
-    figure;
+ figure;
+    % Первый график
+    subplot(3, 1, 1); % 3 строки, 1 столбец, 1-я позиция
     plot(result, 'LineWidth', 2);
     xlabel('Time', 'FontSize', 12, 'FontWeight', 'bold');
     ylabel('Signal', 'FontSize', 12, 'FontWeight', 'bold');
-    title('Signal Visualization hastle with signal', 'FontSize', 14, 'FontWeight', 'bold');
+    title('Signal Visualization Sample rate * (GOLD + DATA + CRC)', 'FontSize', 14, 'FontWeight', 'bold');
     grid on;
     set(gca, 'FontSize', 12, 'FontWeight', 'bold');
     xlim([0 length(result)]); 
     ylim([min(result) - 0.5, max(result) + 0.5]);
+    
+    % Второй график
+    subplot(3, 1, 2); % 3 строки, 1 столбец, 2-я позиция
+    plot(result_1, 'LineWidth', 2);
+    xlabel('Time', 'FontSize', 12, 'FontWeight', 'bold');
+    ylabel('Signal', 'FontSize', 12, 'FontWeight', 'bold');
+    title('Signal Visualization (Sample rate / 2) * (GOLD + DATA + CRC)', 'FontSize', 14, 'FontWeight', 'bold');
+    grid on;
+    set(gca, 'FontSize', 12, 'FontWeight', 'bold');
+    xlim([0 length(result_1)]); 
+    ylim([min(result_1) - 0.5, max(result_1) + 0.5]);
+    
+    % Третий график
+    subplot(3, 1, 3); % 3 строки, 1 столбец, 3-я позиция
+    plot(result_2, 'LineWidth', 2);
+    xlabel('Time', 'FontSize', 12, 'FontWeight', 'bold');
+    ylabel('Signal', 'FontSize', 12, 'FontWeight', 'bold');
+    title('Signal Visualization (Sample rate * 2) * (GOLD + DATA + CRC)', 'FontSize', 14, 'FontWeight', 'bold');
+    grid on;
+    set(gca, 'FontSize', 12, 'FontWeight', 'bold');
+    xlim([0 length(result_2)]); 
+    ylim([min(result_2) - 0.5, max(result_2) + 0.5]);
 
     % Находим начало синхропоследовательности
     gold_sequence_double = double(gold_sequence);
