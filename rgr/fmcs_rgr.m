@@ -281,7 +281,7 @@ function main
     ylim([min(bits_sequence_W_NG) - 0.5, max(bits_sequence_W_NG) + 0.5]);
 
     % Проверка на приемной стороне
-    [isValid, crcLength, endIndex] = checkPacket(packetWithCRC, g_sequence);
+    [isValid, crcLength, endIndex] = checkPacket(bits_sequence_W_NG, g_sequence);
     disp(crcLength);
     disp(endIndex);
     if isValid

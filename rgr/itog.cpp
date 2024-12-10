@@ -5,6 +5,7 @@
 #include <cmath>
 #include <utility>
 #include <random>
+#include <fstream>
 
 using namespace std;
 
@@ -213,6 +214,8 @@ void generate_noise(vector<double>& noise, int size, double mu, double sigma) {
     }
 }
 
+
+
 vector<double> convert_int_to_double(const vector<int>& int_vector) {
     vector<double> double_vector;
 
@@ -242,6 +245,8 @@ int findSyncSequenceStart(const vector<double>& array_with_hastle,
                           const vector<double>& gold_sequence_double, 
                           int N, int L, int M, int G) {
     double result = 0;
+    double max_correlation = 0;
+    int max_index = -1;
     int G_N = G * N; // Длина синхронизирующей последовательности
 
     // Проверяем, чтобы длина данных была достаточной
@@ -251,26 +256,39 @@ int findSyncSequenceStart(const vector<double>& array_with_hastle,
     }
 
     // Проходим по массиву и ищем синхронизирующую последовательность
-    for (int i = 0; i <= N*(L+M+G); ++i) {
+    for (int i = 0; i <= N * (L + M + G) - G_N; ++i) {
         // Извлекаем подмассив длиной G * N начиная с позиции i
         vector<double> synchro_sequence(array_with_hastle.begin() + i, 
                                         array_with_hastle.begin() + i + G_N);
         // Вычисляем корреляцию
         result = calculateCorrelation(synchro_sequence, gold_sequence_double);
-        cout << "correlation = " << result << endl;
+
+        // Обновляем максимальную корреляцию, если она выше текущей
+        if (abs(result) > abs(max_correlation)) {
+            max_correlation = result;
+            max_index = i;
+        }
+
         // Проверяем корреляцию
-        if (abs(result) >= 0.6) {
+        if (abs(result) == 1) {
             cout << "Найден вход в синхроимпульс на индексе: " << i << endl;
             return i; // Возвращаем индекс начала
         }
     }
-
-    cout << "Синхроимпульс не найден." << endl;
-    return -1; // Возвращаем -1, если синхроимпульс не найден
+    
+    // Если синхроимпульс не найден, возвращаем индекс с максимальной корреляцией
+    if (max_index != -1) {
+        cout << "Синхроимпульс не найден. Максимальная корреляция: " 
+             << max_correlation << " на индексе: " << max_index << endl;
+    } else {
+        cout << "Синхроимпульс не найден и корреляций не найдено." << endl;
+    }
+    return max_index;
 }
 
+
 vector<double> decode_signal(const vector<double>& signal, int N) {
-    double P = 0.6;
+    double P = 0.5;
 
     // Результирующий вектор для хранения декодированных битов
     vector<double> decoded_bits;
@@ -289,7 +307,7 @@ vector<double> decode_signal(const vector<double>& signal, int N) {
         // Среднее значение текущей группы
         double average = sum / N;
 
-        cout << average << endl;
+        // cout << average << endl;
 
         // Принимаем решение: 0 или 1
         if (average >= P) {
@@ -315,6 +333,7 @@ vector<int> convertVectorToInt(const vector<double>& input) {
 }
 
 int main(){
+    // srand(time(0));
     // Ввод фамилии и имени
     string surname, name;
     cout << "Введите фамилию: ";
@@ -323,7 +342,7 @@ int main(){
     cin >> name;
 
     // Объединение фамилии и имени для обработки
-    string fullName = surname + name; // Если добавить + " " + то будут биты пробела, а это не нужно
+    string fullName = surname + "_" + name; // Если добавить + " " + то будут биты пробела
 
     // Строка для хранения битового представления
     vector<int> packet;
@@ -345,23 +364,35 @@ int main(){
     }
     cout << endl;
 
+     // Запись данных в файл "name_bits.txt"
+    ofstream outFile("name_bits.txt");
+    if (outFile.is_open()) {
+        for (int bit : packet) {
+            outFile << bit;
+        }
+        outFile.close();
+        cout << "Данные успешно записаны в файл \"name_bits.txt\"." << endl;
+    } else {
+        cerr << "Не удалось открыть файл для записи." << endl;
+    }
+     // Запись данных в файл "name_bits.txt"
+
     vector<int> g_sequence = {1,1,1,1,0,1,1,1};
     vector<int> crc = calculateCRC(packet, g_sequence);
 
-    vector<int> packetWithCRC = appendCRC(packet, crc);
-
-    cout << "CRC: "<<endl;
-    for (double bit : packetWithCRC) {
+    cout << "Only CRC: "<<endl;
+    for (double bit : crc) {
         cout << bit;
     }
     cout << endl;
 
-    // Проверка на приемной стороне
-    // if (checkPacket(packetWithCRC, g_sequence)) {
-    //     cout << "Ошибок не обнаружено в принятом пакете." << endl;
-    // } else {
-    //     cout << "Ошибка обнаружена в принятом пакете." << endl;
-    // }
+    vector<int> packetWithCRC = appendCRC(packet, crc);
+
+    cout << "packet with CRC: "<<endl;
+    for (double bit : packetWithCRC) {
+        cout << bit;
+    }
+    cout << endl;
 
     // генерация последовательности Голда
     int length_sequence_gold = 31;
@@ -370,7 +401,7 @@ int main(){
 
     vector<int> gold_sequence = generate_sequence_gold(x, y, length_sequence_gold);
 
-    // cout << "Последовательность Голда: ";
+    cout << "Gold:" << endl;
     for (int bit : gold_sequence) {
         cout << bit;
     }
@@ -388,22 +419,34 @@ int main(){
     int N = 4;
     vector<int> array_data(N * (L + M + G),0);
     array_data = append_gold_sequnce(packetWithCRC,gold_sequence);
+
+     // Запись данных в файл "gold_name_crc_bits.txt"
+    ofstream outFile2("gold_name_crc_bits.txt");
+    if (outFile2.is_open()) {
+        for (int bit : array_data) {
+            outFile2 << bit;
+        }
+        outFile2.close();
+        cout << "Данные успешно записаны в файл \"gold_name_crc_bits.txt\"." << endl;
+    } else {
+        cerr << "Не удалось открыть файл для записи." << endl;
+    }
+     // Запись данных в файл "gold_name_crc_bits.txt"
+
+    vector<int> array_data_1 = array_data;
     // cout << "gold + packet + CRC: : ";
     for (double bit : array_data) {
         cout << bit;
     }
     cout << endl;
     array_data = repeat_elements(array_data, N);
-    // cout << "gold + N * (packet + CRC):";
-    // for (double bit : array_data) {
-    //     cout << bit;
-    // }
-    // cout << endl;
+
     vector<int> array_out(2 * N * (L + M + G), 0);
 
     int position = 0;
     bool flag = true;
     // Пока нету нужного значения принимаем новые
+    cout << "Введите позицию в массиве: ";
     while(flag){
         cin >> position;
         if (position >= 0 && position <= N * (L + M + G) ){
@@ -415,35 +458,65 @@ int main(){
 
     array_out = insert_array_at_position(array_out, array_data, position);
 
+     // Запись данных в файл "N_gold_name_crc_bits.txt"
+    ofstream outFile3("N_gold_name_crc_bits.txt");
+    if (outFile3.is_open()) {
+        for (int bit : array_out) {
+            outFile3 << bit;
+        }
+        outFile3.close();
+        cout << "Данные успешно записаны в файл \"N_gold_name_crc_bits.txt\"." << endl;
+    } else {
+        cerr << "Не удалось открыть файл для записи." << endl;
+    }
+     // Запись данных в файл "N_gold_name_crc_bits.txt"
+
     float mu = 0.0;
     float sigma = 0;
+    cout << "Введите значение sigma от 0 до 1: ";
     cin >> sigma;
 
+    // задаём пустой массив
     vector<double> array_with_hastle(2 * N  * (L + M + G));
+    // создаём шум
     generate_noise(array_with_hastle,array_with_hastle.size(),mu,sigma);
 
-    // cout << "noise: ";
+    // cout << "Noise:"<<endl;
     // for (double bit : array_with_hastle) {
-    //     cout << bit;
+    //     cout << bit << " ";
     // }
-
+    // cout << endl;
+     // Запись данных в файл "noise_bits.txt"
+    ofstream outFile4("noise_bits.txt");
+    if (outFile4.is_open()) {
+        for (double bit : array_with_hastle) {
+            outFile4 << bit << " ";
+        }
+        outFile4.close();
+        cout << "Данные успешно записаны в файл \"noise_bits.txt\"." << endl;
+    } else {
+        cerr << "Не удалось открыть файл для записи." << endl;
+    }
+     // Запись данных в файл "noise_bits.txt"
+    // перевёл 
     vector<double> array_out_double = convert_int_to_double(array_out);
 
     vector<double> signal_out = add_vectors(array_out_double,array_with_hastle);
 
-    // cout << "signal with hastle: ";
-    // for (double bit : signal_out) {
-    //     cout << bit << " ";
-    // }
-    // cout << endl;
+    // Запись данных в файл "noise_data_bits.txt"
+    ofstream outFile5("noise_data_bits.txt");
+    if (outFile5.is_open()) {
+        for (double bit : signal_out) {
+            outFile5 << bit << " ";
+        }
+        outFile4.close();
+        cout << "Данные успешно записаны в файл \"noise_data_bits.txt\"." << endl;
+    } else {
+        cerr << "Не удалось открыть файл для записи." << endl;
+    }
+    // Запись данных в файл "noise_data_bits.txt"
 
     vector<double> gold_sequence_double = convert_int_to_double(gold_sequence);
-
-    // cout << "gold: : ";
-    // for (double bit : gold_sequence_double) {
-    //     cout << bit;
-    // }
-    // cout << endl;
 
     gold_sequence_double = repeat_elements_double(gold_sequence_double, N);
 
@@ -453,42 +526,34 @@ int main(){
 
     vector<double> signal_after_decoding = decode_signal(signal_out,N);
 
-    // cout << "signal start:"<<endl;
-    // for (double bit : signal_after_decoding) {
-    //     cout << bit;
-    // }
-    // cout << endl;
-
-    // cout << "gold:"<<endl;
-    // for (double bit : gold_sequence) {
-    //     cout << bit;
-    // }
-    // cout << endl;
-
-
     signal_after_decoding.erase(signal_after_decoding.begin(), signal_after_decoding.begin() + G);
 
-    // cout << "signal without GOLD:"<<endl;
-    // for (double bit : signal_after_decoding) {
-    //     cout << bit;
-    // }
-    // cout << endl;
+    cout << "signal without GOLD:"<<endl;
+    for (double bit : signal_after_decoding) {
+        cout << bit;
+    }
+    cout << endl;
 
-    signal_after_decoding.erase(signal_after_decoding.begin() + G + L + M + 1, signal_after_decoding.end()); // ПРОБЛЕМА В ОБРЕЗКЕ ВЕКТОРА и в декодирование битов
- 
-    // cout << "signal without hastle after CRC:"<<endl;
-    // for (double bit : signal_after_decoding) {
-    //     cout << bit;
-    // }
-    // cout << endl;
+    signal_after_decoding.erase(signal_after_decoding.begin() + L + M, signal_after_decoding.end()); // ПРОБЛЕМА в декодирование битов
 
-    // cout << "packet with CRC:"<<endl;
-    // for (double bit : packetWithCRC) {
-    //     cout << bit;
-    // }
-    // cout << endl;
+    cout << "signal without hastle after CRC:"<<endl;
+    for (double bit : signal_after_decoding) {
+        cout << bit;
+    }
+    cout << endl;
+    cout << "packet with CRC:"<<endl;
+    for (double bit : packetWithCRC) {
+        cout << bit;
+    }
+    cout << endl;
 
     vector<int> signal_after_decoding_int = convertVectorToInt(signal_after_decoding);
+
+    cout << "from double to int:"<<endl;
+    for (double bit : signal_after_decoding_int) {
+        cout << bit;
+    }
+    cout << endl;
 
     // Проверка на приемной стороне
     if (checkPacket(signal_after_decoding_int, g_sequence)) {
@@ -497,7 +562,31 @@ int main(){
         cout << "problem Ошибка обнаружена в принятом пакете." << endl;
     }
 
-    
+    cout << "start packet:"<<endl;
+    for (double bit : packetWithCRC) {
+        cout << bit;
+    }
+    cout << endl;
 
-    // зависимость корреляции от шума
+    cout << "finish packet:"<<endl;
+    for (double bit : signal_after_decoding_int) {
+        cout << bit;
+    }
+    cout << endl;
+
+    for(int i = 0; i < signal_after_decoding_int.size(); i++){
+        if(packetWithCRC[i] != signal_after_decoding_int[i]){
+            cout << "ERROR"<<endl;
+            cout << "Error element position " << i << endl;
+            break;
+        }
+    }
+
+    // обрезаю CRC
+    signal_after_decoding_int.erase(signal_after_decoding_int.begin() + L, signal_after_decoding_int.end());
+
+    cout << "FINISH" << endl;
+
+    string bukava = decodeFromBits(signal_after_decoding_int);
+    cout << bukava << endl;
 }
