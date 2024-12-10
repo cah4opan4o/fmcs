@@ -1,2 +1,5 @@
 *.exe
 *.asv
+*.txt
+.vscode
+rgr_new_version
